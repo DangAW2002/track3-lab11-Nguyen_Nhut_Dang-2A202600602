@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "sqlite-lab": {
+      "type": "stdio",
+      "command": "C:\\Users\\Dang\\miniforge3\\envs\\ai-20k-3.11\\python.exe",
+      "args": [
+        "C:\\Users\\Dang\\Desktop\\ai-20k\\BT_LAB\\track3-lab11-Nguyen_Nhut_Dang-2A202600602\\implementation\\mcp_server.py"
+      ],
+      "env": {}
+    }
+  }
+}

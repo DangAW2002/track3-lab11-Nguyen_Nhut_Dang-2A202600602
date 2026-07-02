@@ -1,181 +1,120 @@
-# Lab: Build a Database MCP Server with FastMCP and SQLite
+# SQLite Database MCP Server (Lab 11)
 
-## Goal
+Dự án này là một Model Context Protocol (MCP) server được xây dựng bằng **FastMCP** (Python) và **SQLite**, cho phép các AI Client (như Gemini CLI, Claude Code) truy vấn, chèn dữ liệu và thống kê từ cơ sở dữ liệu học tập một cách an toàn (chống SQL Injection thông qua cơ chế kiểm tra allowlist nghiêm ngặt và bind tham số).
 
-Build a Model Context Protocol (MCP) server using FastMCP that exposes a small database through:
+---
 
-- `search`
-- `insert`
-- `aggregate`
-
-You must also expose the database schema as an MCP resource, test the server with Inspector or equivalent tooling, and show the server working from at least one MCP client.
-
-## Learning Outcomes
-
-By the end of this lab, students should be able to:
-
-- explain what MCP tools and resources are
-- build a FastMCP server in Python
-- connect FastMCP to a SQLite database
-- safely validate database requests before executing SQL
-- expose dynamic schema context through `@mcp.resource(...)`
-- test tool schemas, normal calls, and error responses
-- connect the server to an MCP client such as Claude Code, Codex, or Gemini CLI
-
-## Required Features
-
-### Part 1: MCP Server
-
-Implement a FastMCP server that exposes exactly these tool categories:
-
-1. `search`
-2. `insert`
-3. `aggregate`
-
-Your server may use SQLite for the main implementation. If you want to support PostgreSQL too, design the code so the database layer can be swapped later.
-
-### Part 2: Resource
-
-Expose database schema information as MCP resources:
-
-- one resource for the full database schema
-- one dynamic resource template for a single table schema
-
-Suggested URIs:
-
-- `schema://database`
-- `schema://table/{table_name}`
-
-### Part 3: Validation and Error Handling
-
-Your tools must reject unsafe or invalid requests:
-
-- unknown table names
-- unknown column names
-- unsupported filter operators
-- invalid aggregate requests
-- empty inserts
-
-Do not build SQL by blindly concatenating raw user input.
-
-### Part 4: Testing and Verification
-
-Verify all of the following:
-
-1. the server starts correctly
-2. the three tools are discoverable
-3. the schema resource is discoverable
-4. valid tool calls return useful results
-5. invalid tool calls return clear errors
-6. at least one MCP client can connect and use the server
-
-### Part 5: Demo Deliverables
-
-Prepare:
-
-- GitHub repository
-- setup instructions
-- tool descriptions
-- testing steps
-- at least one client configuration example
-- short demo video, around 2 minutes
-
-Inspector screenshots are recommended if you use MCP Inspector.
-
-## Suggested Project Structure
+## 📂 Cấu trúc thư mục (Project Structure)
 
 ```text
-implementation/
-  db.py
-  init_db.py
-  mcp_server.py
-  verify_server.py
-  tests/
-    test_server.py
+track3-lab11-Nguyen_Nhut_Dang-2A202600602/
+├── .gemini/
+│   └── settings.json       # Cấu hình MCP server cho Gemini CLI
+├── .mcp.json               # Cấu hình MCP server cho Claude Code
+├── implementation/
+│   ├── db.py               # Adapter SQLite (Logic truy vấn & Bảo mật)
+│   ├── init_db.py          # Script khởi tạo database & seed dữ liệu mẫu
+│   ├── mcp_server.py       # Điểm khởi chạy FastMCP Server (Tools & Resources)
+│   ├── verify_server.py    # Kịch bản kiểm thử tích hợp (Smoke test)
+│   └── tests/
+│       └── test_server.py  # Bộ unit tests tự động (pytest)
+├── README.md               # Hướng dẫn chi tiết này
+├── Rubric.md               # Tiêu chí đánh giá bài Lab
+└── Tips.md                 # Mẹo tích hợp các Client
 ```
 
-## Recommended Data Model
+---
 
-Use a small relational dataset so `search`, `insert`, and `aggregate` are easy to demo. Example:
+## 🛠️ Hướng dẫn thiết lập (Setup Instructions)
 
-- `students`
-- `courses`
-- `enrollments`
-
-## Example Tasks to Demonstrate
-
-- search all students in cohort `A1`
-- insert a new student
-- count rows in a table
-- compute average score by cohort
-- read the full schema resource
-- read `schema://table/students`
-- show an invalid request, such as searching a missing table
-
-## FastMCP and Inspector References
-
-- FastMCP quickstart: https://gofastmcp.com/v2/getting-started/quickstart
-- FastMCP resources: https://gofastmcp.com/v2/servers/resources
-- MCP Inspector: https://modelcontextprotocol.io/docs/tools/inspector
-
-## Client Setup Notes
-
-### Claude Code
-
-Anthropic documents local JSON config and `claude mcp add` flows here:
-
-- https://code.claude.com/docs/en/mcp
-
-Claude Code supports MCP resources via `@server:resource-uri` references and supports environment variable expansion in `.mcp.json`.
-
-### Codex
-
-OpenAI documents Codex MCP setup here:
-
-- https://developers.openai.com/learn/docs-mcp
-
-Codex supports MCP server configuration through the CLI and `~/.codex/config.toml`.
-
-### Gemini CLI
-
-Gemini CLI has a built-in MCP manager. In the verified local workflow, the simplest path is:
-
+### 1. Kích hoạt môi trường Conda
+Sử dụng môi trường conda `ai-20k-3.11` như được yêu cầu:
 ```bash
-gemini mcp add sqlite-lab /ABSOLUTE/PATH/TO/python /ABSOLUTE/PATH/TO/implementation/mcp_server.py --description "SQLite lab FastMCP server" --timeout 10000
-gemini mcp list
+conda activate ai-20k-3.11
 ```
 
-Gemini CLI also documents configuration details here:
+### 2. Cài đặt các thư viện cần thiết
+Cài đặt `fastmcp` bằng `pip`:
+```bash
+C:\Users\Dang\miniforge3\envs\ai-20k-3.11\python.exe -m pip install fastmcp
+```
 
-- https://github.com/google-gemini/gemini-cli/blob/main/docs/reference/configuration.md
+### 3. Khởi tạo Cơ sở dữ liệu (SQLite)
+Chạy script `init_db.py` để tạo file DB `implementation/sqlite_lab.db` và seed dữ liệu mẫu:
+```bash
+C:\Users\Dang\miniforge3\envs\ai-20k-3.11\python.exe implementation/init_db.py
+```
+*Dữ liệu mẫu chứa các bảng: `students`, `courses`, và `enrollments`.*
 
-Expected outcome:
+---
 
-- the server appears as `Connected`
-- Gemini can discover `search`, `insert`, and `aggregate`
-- a headless smoke test works with `gemini --allowed-mcp-server-names sqlite-lab --yolo -p "..."`
+## ⚙️ Mô tả các tính năng MCP (FastMCP Specifications)
 
-### Antigravity
+### 1. MCP Tools (Công cụ cung cấp cho AI)
+*   **`search`**: Tìm kiếm dòng trong bảng với các tùy chọn: chọn cột (`columns`), bộ lọc (`filters`), giới hạn (`limit`), bỏ qua (`offset`), và sắp xếp (`order_by`, `descending`).
+    *   *Toán tử lọc hỗ trợ:* `=`, `!=`, `>`, `<`, `>=`, `<=`, `LIKE`, `IN`.
+*   **`insert`**: Chèn dòng dữ liệu mới vào bảng (kiểm tra chặt chẽ khóa ngoại và dữ liệu rỗng).
+*   **`aggregate`**: Tính toán các chỉ số thống kê (`COUNT`, `AVG`, `SUM`, `MIN`, `MAX`) kèm theo tùy chọn lọc và gom nhóm (`group_by`).
 
-Antigravity commonly uses an `mcp_config.json` file with a shape similar to Gemini CLI. Verify the current product behavior in your installed version before grading against exact UI steps.
+### 2. MCP Resources (Tài nguyên tĩnh/động)
+*   **`schema://database`**: Cung cấp cấu trúc schema JSON của toàn bộ cơ sở dữ liệu.
+*   **`schema://table/{table_name}`**: Cung cấp cấu trúc schema chi tiết cho một bảng cụ thể (ví dụ: `schema://table/students`).
 
-## Deliverable Checklist
+---
 
-- working FastMCP server
-- SQLite database and seed data
-- `search`, `insert`, `aggregate` tools
-- schema resource and schema resource template
-- verification steps
-- automated tests or repeatable verification script
-- client configuration example
-- README with setup and demo steps
-- Inspector startup command or helper script
-- at least one verified Gemini CLI or Claude/Codex client test
+## 🛡️ Cơ chế bảo mật và an toàn đầu vào
 
-## Bonus
+Hệ thống ngăn chặn **SQL Injection** và các lỗi logic thông qua:
+1.  **Allowlist kiểm tra định danh**: Chỉ cho phép thao tác trên các bảng và cột được khai báo trước. Bất kỳ tên bảng hoặc cột lạ nào đều bị từ chối ngay lập tức bằng `ValidationError`.
+2.  **Allowlist toan tử và hàm**: Giới hạn nghiêm ngặt các toán tử so sánh và các hàm aggregate.
+3.  **Tham số hóa câu lệnh (Parameterized Queries)**: Sử dụng ký tự placeholder `?` cho mọi giá trị đầu vào từ người dùng khi thực hiện truy vấn hoặc chèn dòng dữ liệu mới.
 
-Optional bonus:
+---
 
-- add authentication for SSE or HTTP transport
-- support both SQLite and PostgreSQL with the same MCP surface
-- add richer output annotations or pagination
+## 🧪 Quy trình kiểm thử và xác minh (Testing & Verification)
+
+### 1. Chạy kịch bản kiểm thử Adapter
+Chạy kiểm tra trực tiếp adapter SQLite để verify toàn bộ chức năng (bao gồm cả các test case bảo mật):
+```bash
+C:\Users\Dang\miniforge3\envs\ai-20k-3.11\python.exe implementation/verify_server.py
+```
+
+### 2. Chạy bộ Unit Tests với Pytest
+Chạy bộ kiểm thử tự động (sử dụng cờ `--disable-plugin-autoload` để tránh các lỗi xung đột SSL từ các plugin bên thứ ba như `deepeval` trên Windows):
+```bash
+C:\Users\Dang\miniforge3\envs\ai-20k-3.11\python.exe -m pytest --disable-plugin-autoload implementation/tests/
+```
+*Kết quả mong đợi: Toàn bộ các test case vượt qua thành công (7 passed).*
+
+### 3. Kiểm tra bằng FastMCP CLI
+Kiểm tra khả năng tự phát hiện (discoverability) các công cụ và tài nguyên của server:
+```bash
+C:\Users\Dang\miniforge3\envs\ai-20k-3.11\Scripts\fastmcp.exe inspect --skip-env implementation/mcp_server.py
+```
+
+### 4. Kiểm tra bằng MCP Inspector
+Bật giao diện trực quan MCP Inspector để gọi thử trực tiếp các công cụ:
+```bash
+npx @modelcontextprotocol/inspector C:\Users\Dang\miniforge3\envs\ai-20k-3.11\python.exe implementation/mcp_server.py
+```
+
+---
+
+## 💻 Cấu hình Client (Client Configuration)
+
+### 1. Gemini CLI
+Cấu hình đã được ghi đè tại dự án ở địa chỉ `.gemini/settings.json`. Để đăng ký thủ công ở cấp hệ thống:
+```bash
+gemini mcp add sqlite-lab C:\Users\Dang\miniforge3\envs\ai-20k-3.11\python.exe C:\Users\Dang\Desktop\ai-20k\BT_LAB\track3-lab11-Nguyen_Nhut_Dang-2A202600602\implementation\mcp_server.py --description "SQLite lab FastMCP server" --timeout 10000
+```
+Sau đó bạn có thể đặt câu hỏi:
+```bash
+gemini --allowed-mcp-server-names sqlite-lab --yolo -p "Show me the list of students in A1"
+```
+
+### 2. Claude Code
+Cấu hình đã được định nghĩa sẵn trong `.mcp.json` tại thư mục gốc của bài Lab. Claude Code sẽ tự động tải cấu hình khi bạn khởi động nó trong thư mục này.
+Bạn có thể tham chiếu schema trực tiếp:
+```text
+Show me the students schema by querying @sqlite-lab:schema://table/students
+```
